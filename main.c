@@ -1,7 +1,6 @@
-
 /* You are not allowed to use <stdio.h> */
 #include "io.h"
-#include <stdlib.h>
+#include "mm.h"
 
 /**
  * @name  main
@@ -24,7 +23,7 @@ typedef struct {
 static void col_init(Collection *c) {
     c->size = 0;
     c->capacity = 4;
-    c->data = (int*)malloc(c->capacity * sizeof(int));
+    c->data = (int*)simple_malloc(c->capacity * sizeof(int));
 }
 
 // adds an int to the collection, resizing if necessary
@@ -32,9 +31,16 @@ static void col_init(Collection *c) {
 static int col_add(Collection *c, int value) {
     if (c->size == c->capacity) {
         int newCapacity = c->capacity * 2;
-        int *p = (int*)realloc(c->data, newCapacity * sizeof(int));
-        if (!p) return EOF;
-        c->data = p;
+
+        int *newData = (int*)simple_malloc(newCapacity * sizeof(int));
+        if (!newData) return EOF;
+
+        for (int i = 0; i < c->size; i++) {
+            newData[i] = c->data[i];
+        }
+
+        simple_free(c->data);
+        c->data = newData;
         c->capacity = newCapacity;
     }
     c->data[c->size++] = value;
@@ -47,7 +53,7 @@ static void col_pop(Collection *c) {
 }
 // frees the collection's resources
 static void col_free(Collection *c) {
-    free(c->data);
+    simple_free(c->data);
     c->data = NULL;
     c->size = c->capacity = 0;
 }
@@ -106,4 +112,3 @@ int main(void) {
     col_free(&col);
     return 0;
 }
-
