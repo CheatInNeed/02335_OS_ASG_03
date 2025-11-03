@@ -24,7 +24,7 @@ typedef struct header {
 #define SET_NEXT(p,n)  ((p)->next = (BlockHeader*) ( ((uintptr_t)(n) & ~0x1) | ((uintptr_t)GET_FREE(p)) ))
 #define GET_FREE(p)    (uint8_t) ( (uintptr_t) (p->next) & 0x1 )   /* OK -- do not change */
 #define SET_FREE(p,f)  ((p)->next = (BlockHeader*) ( ((uintptr_t)((p)->next) & ~0x1) | ((uintptr_t)(f) & 0x1) ))
-#define SIZE(p)        (size_t) (uintptr_t)GET_NEXT(p) - (uintptr_t)(p + 1))
+#define SIZE(p)        ((size_t)((uintptr_t)GET_NEXT(p) - (uintptr_t)(p + 1)))
 #define MIN_SIZE     (8)   // A block should have at least 8 bytes available for the user
 
 
@@ -37,7 +37,7 @@ static BlockHeader * current = NULL;
  *
  */
 void simple_init() {
-  uintptr_t aligned_memory_start = (memory_start + 7) & ~0x7; /* Make sure we round up by adding 7, then removing last three bits with not (1...1000) */
+  uintptr_t aligned_memory_start = (memory_start + 7) & ~0x7; /* Make sure we round up by adding 7, then removing last three bits with not(1...1000) */
   uintptr_t aligned_memory_end   = memory_end & ~0x7; /* Just round down, hence we remove last three bits*/
   BlockHeader * last;
 
@@ -76,12 +76,11 @@ void* simple_malloc(size_t size) {
     if (first == NULL) return NULL;
   }
 
-  size_t aligned_size = size;  /* TODO: Alignment */
+  size_t aligned_size = (size + 7) & ~0x7; /* Make sure size is divisible by 8*/
 
   /* Search for a free block */
   BlockHeader * search_start = current;
   do {
- 
     if (GET_FREE(current)) {
 
       /* Possibly coalesce consecutive free blocks here */
@@ -91,10 +90,10 @@ void* simple_malloc(size_t size) {
         /* Will the remainder be large enough for a new block? */
         if (SIZE(current) - aligned_size < sizeof(BlockHeader) + MIN_SIZE) {
           /* TODO: Use block as is, marking it non-free*/
+          SET_FREE(current, 0);
         } else {
           /* TODO: Carve aligned_size from block and allocate new free block for the rest */
         }
-        
         return (void *) NULL; /* TODO: Return address of current's user_block and advance current */
       }
     }
