@@ -76,7 +76,7 @@ void* simple_malloc(size_t size) {
     if (first == NULL) return NULL;
   }
 
-  size_t aligned_size = size;  /* TODO: Alignment */
+  size_t aligned_size = (size + 7) & ~0x7;
 
   /* Search for a free block */
   BlockHeader * search_start = current;
@@ -85,23 +85,36 @@ void* simple_malloc(size_t size) {
     if (GET_FREE(current)) {
 
       /* Possibly coalesce consecutive free blocks here */
+      BlockHeader *next = GET_NEXT(current);
+      while (GET_FREE(next) && next != first) {
+        SET_NEXT(current, GET_NEXT(next));
+        next = GET_NEXT(current);
+      }
 
       /* Check if free block is large enough */
       if (SIZE(current) >= aligned_size) {
         /* Will the remainder be large enough for a new block? */
         if (SIZE(current) - aligned_size < sizeof(BlockHeader) + MIN_SIZE) {
-          /* TODO: Use block as is, marking it non-free*/
-        } else {
-          /* TODO: Carve aligned_size from block and allocate new free block for the rest */
+          /* Use block as is, marking it non-free */
+          SET_FREE(current, 0);
+          void *next = (void *)(current + 1);
+          current = GET_NEXT(current);
+          return next;
         }
-        
-        return (void *) NULL; /* TODO: Return address of current's user_block and advance current */
+        BlockHeader *new_block = (BlockHeader *)((uintptr_t)(current + 1) + aligned_size);
+
+        SET_NEXT(new_block, GET_NEXT(current));
+        SET_FREE(new_block, 1);      // mark the rest as free
+        SET_NEXT(current, new_block);
+        SET_FREE(current, 0);        // mark current as used
+
+        void *user_ptr = (void *)(current + 1);
+        current = new_block;
+        return user_ptr;
       }
     }
-
     current = GET_NEXT(current);
   } while (current != search_start);
-
  /* None found */
   return NULL;
 }
@@ -117,18 +130,36 @@ void* simple_malloc(size_t size) {
  *
  */
 void simple_free(void * ptr) {
-  BlockHeader * block = NULL; /* TODO: Find block corresponding to ptr */
+  if (ptr == NULL) return;
+  if ((uintptr_t)ptr < memory_start || (uintptr_t)ptr >= memory_end) return;
+
+  BlockHeader *block = (BlockHeader *)ptr - 1;
   if (GET_FREE(block)) {
     /* Block is not in use -- probably an error */
     return;
   }
-
-  /* TODO: Free block */
+  SET_FREE(block, 1);
 
   /* Possibly coalesce consecutive free blocks here */
+  BlockHeader *next = GET_NEXT(block);
+  if (GET_FREE(next)) {
+    /* Merge: skip over next block */
+    SET_NEXT(block, GET_NEXT(next));
+  }
+
+  BlockHeader *prev = first;
+  while (GET_NEXT(prev) != block && GET_NEXT(prev) != first) {
+    prev = GET_NEXT(prev);
+  }
+
+  if (GET_FREE(prev)) {
+    /* Merge previous and current (already possibly merged forward) */
+    SET_NEXT(prev, GET_NEXT(block));
+    block = prev;  // merged block now starts at prev
+  }
+
+  current = block;
 }
-
-
 /* Include test routines */
 
 #include "mm_aux.c"
