@@ -135,7 +135,6 @@ void simple_free(void * ptr) {
 
   BlockHeader *block = (BlockHeader *)ptr - 1;
   if (GET_FREE(block)) {
-    /* Block is not in use -- probably an error */
     return;
   }
   SET_FREE(block, 1);
@@ -143,22 +142,20 @@ void simple_free(void * ptr) {
   /* Possibly coalesce consecutive free blocks here */
   BlockHeader *next = GET_NEXT(block);
   if (GET_FREE(next)) {
-    /* Merge: skip over next block */
     SET_NEXT(block, GET_NEXT(next));
   }
 
+  /* Find previous */
   BlockHeader *prev = first;
   while (GET_NEXT(prev) != block && GET_NEXT(prev) != first) {
     prev = GET_NEXT(prev);
   }
 
+  /* Merge with previous */
   if (GET_FREE(prev)) {
-    /* Merge previous and current (already possibly merged forward) */
     SET_NEXT(prev, GET_NEXT(block));
-    block = prev;  // merged block now starts at prev
+    block = prev;
   }
-
-  current = block;
 }
 /* Include test routines */
 

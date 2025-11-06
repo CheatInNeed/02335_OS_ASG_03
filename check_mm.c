@@ -276,6 +276,29 @@ START_TEST (test_memory_exerciser)
 
 END_TEST
 
+START_TEST(test_not_first_fit)
+{
+  void *a = MALLOC(100);
+  void *b = MALLOC(200);
+  void *c = MALLOC(300);
+
+  // Efter disse tre står current på restblokken lige efter C (new_block efter C)
+
+  FREE(b); // Gør KUN B fri
+
+  // First-fit ville nu vælge B (første frie blok fra begyndelsen).
+  // Next-fit (start fra restblokken efter C) bør i stedet tage fra restområdet efter C.
+  void *d = MALLOC(64);
+  ck_assert_msg(d != b,
+    "Allocator behaved like first-fit (picked B). Next-fit should allocate from the remainder after C.");
+
+  // Ryd op
+  FREE(a);
+  FREE(c);
+  FREE(d);
+}
+END_TEST
+
 /**
  * { You may provide more unit tests here, but remember to add them to simple_malloc_suite }
  */
@@ -293,6 +316,7 @@ Suite* simple_malloc_suite()
   tcase_add_test (tc_core, test_simple_allocation);
   tcase_add_test (tc_core, test_simple_unique_addresses);
   tcase_add_test (tc_core, test_memory_exerciser);
+  tcase_add_test(tc_core, test_not_first_fit);
 
   suite_add_tcase(s, tc_core);
   return s;
