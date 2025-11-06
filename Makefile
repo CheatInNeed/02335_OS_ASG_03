@@ -38,7 +38,8 @@ $(TEST_EXECUTABLE): $(TEST_OBJECTS)
 # >>> MODIFIED FOR macOS / Homebrew
 # Added $(LDFLAGS) before linking, so the linker finds libcheck
 $(CHECK_EXECUTABLE): $(CHECK_OBJECTS)
-	$(CC) $(CFLAGS) $(CHECK_OBJECTS) -o $@ $(LDFLAGS) -lcheck -lm
+	$(CC) $(CFLAGS) $(CHECK_OBJECTS) -o $@ $(LDFLAGS) \
+	-lcheck -lm -lpthread
 # <<< END of modification
 # ==========================================================
 
